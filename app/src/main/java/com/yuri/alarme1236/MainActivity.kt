@@ -3,8 +3,13 @@ package com.yuri.alarme1236
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
+import android.app.NotificationManager
 import android.app.TimePickerDialog
+import android.content.Intent
 import android.content.res.ColorStateList
+import android.net.Uri
+import android.provider.Settings
+import android.view.View
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
@@ -37,6 +42,7 @@ class MainActivity : Activity() {
     private var interval = 48
     private var startOffset = 0
 
+    private lateinit var warnCard: LinearLayout
     private lateinit var timeText: TextView
     private lateinit var intervalText: TextView
     private lateinit var seek: SeekBar
@@ -123,6 +129,32 @@ class MainActivity : Activity() {
             tv("Alarmes que repetem no seu ritmo", 15f, R.color.muted)
                 .apply { setPadding(0, dp(2), 0, dp(20)) }
         )
+
+        // Aviso: tela cheia desligada (necessária para o alarme aparecer na tela bloqueada)
+        warnCard = card().apply {
+            addView(tv("Falta um ajuste importante", 16f, R.color.text, true))
+            addView(
+                tv(
+                    "Para o alarme aparecer na tela bloqueada, ative as notificações em tela cheia para o Shiftly.",
+                    14f, R.color.muted
+                ).apply { setPadding(0, dp(6), 0, dp(12)) }
+            )
+            addView(Button(context).apply {
+                text = "Abrir configuração"
+                isAllCaps = false
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(col(R.color.on_accent))
+                stateListAnimator = null
+                background = RippleDrawable(
+                    ColorStateList.valueOf(0x33FFFFFF),
+                    shape(col(R.color.accent), 24),
+                    null
+                )
+                setOnClickListener { openFullScreenSettings() }
+            }, LinearLayout.LayoutParams(MATCH, dp(48)))
+            visibility = View.GONE
+        }
+        content.addView(warnCard)
 
         // Cartão: horário e primeiro disparo
         val timeCard = card()
@@ -244,6 +276,28 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         render()
+        warnCard.visibility =
+            if (Build.VERSION.SDK_INT >= 34 &&
+                !getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
+            ) View.VISIBLE else View.GONE
+    }
+
+    private fun openFullScreenSettings() {
+        try {
+            startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                    Uri.parse("package:$packageName")
+                )
+            )
+        } catch (e: Exception) {
+            startActivity(
+                Intent(
+                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:$packageName")
+                )
+            )
+        }
     }
 
     private fun updateTime() {
